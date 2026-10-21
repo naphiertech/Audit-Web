@@ -21,13 +21,20 @@ export interface AuditOptions {
 }
 
 async function launchBrowser(): Promise<Browser> {
-  // 1. If remote WebSocket endpoint is configured (Browserless / Remote CDP)
-  if (process.env.BROWSER_WS_ENDPOINT) {
+  // 1. If remote WebSocket endpoint or Browserless API key is configured
+  const wsEndpoint =
+    process.env.BROWSER_WS_ENDPOINT ||
+    (process.env.BROWSERLESS_API_KEY
+      ? `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`
+      : null);
+
+  if (wsEndpoint) {
     try {
       const { chromium } = await import('playwright-core');
-      return await chromium.connect(process.env.BROWSER_WS_ENDPOINT);
+      // Connect over CDP to remote headless browser (Browserless / Remote Chrome)
+      return await chromium.connectOverCDP(wsEndpoint);
     } catch (wsErr) {
-      console.warn('[Auditor] Failed to connect to BROWSER_WS_ENDPOINT, falling back to local/serverless launch:', wsErr);
+      console.warn('[Auditor] Failed to connect to remote browser endpoint, falling back:', wsErr);
     }
   }
 
@@ -119,6 +126,8 @@ export async function runAuditEngine(options: AuditOptions): Promise<AuditResult
     await context.addInitScript(() => {
       // @ts-expect-error polyfill
       window.__name = (target: any) => target;
+      // @ts-expect-error polyfill
+      globalThis.__name = (target: any) => target;
     });
 
     const page = await context.newPage();

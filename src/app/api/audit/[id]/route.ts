@@ -5,12 +5,29 @@ export const maxDuration = 10;
 export const dynamic = 'force-dynamic';
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const audit = getAuditById(id);
+    let audit = getAuditById(id);
+
+    if (!audit) {
+      const { searchParams } = new URL(req.url);
+      const targetUrl = searchParams.get('url');
+      if (targetUrl) {
+        try {
+          const { runAuditEngine } = await import('@/lib/auditor/engine');
+          audit = await runAuditEngine({
+            url: targetUrl,
+            device: 'desktop',
+            forceRerun: false,
+          });
+        } catch (e) {
+          console.warn('Could not auto-generate audit for id/url:', id, targetUrl, e);
+        }
+      }
+    }
 
     if (!audit) {
       return NextResponse.json(

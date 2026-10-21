@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { AuditFinding, AuditResult } from '@/types/audit';
+import { generateAuditMarkdown } from '@/lib/auditor/report-generator';
 import {
   Download,
   Copy,
@@ -72,8 +73,7 @@ export function ScreenshotInspector({
 
   const handleCopyMarkdown = async () => {
     try {
-      const res = await fetch(`/api/audit/${result.id}/export?format=markdown`);
-      const md = await res.text();
+      const md = generateAuditMarkdown(result);
       await navigator.clipboard.writeText(md);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -83,7 +83,20 @@ export function ScreenshotInspector({
   };
 
   const handleDownloadMarkdown = () => {
-    window.location.href = `/api/audit/${result.id}/export?format=markdown`;
+    try {
+      const md = generateAuditMarkdown(result);
+      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `AUDIT-${result.id}.md`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      window.location.href = `/api/audit/${result.id}/export?format=markdown`;
+    }
   };
 
   return (

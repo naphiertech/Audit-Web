@@ -81,7 +81,38 @@ export function SiteEntryForm({
       }
 
       setStatusStep("Assembling findings ledger...");
-      router.push(`/audit/${data.result.id}`);
+
+      try {
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem(`auditweb_audit_${data.result.id}`, JSON.stringify(data.result));
+          localStorage.setItem(`auditweb_audit_${data.result.id}`, JSON.stringify(data.result));
+
+          const historyRaw = localStorage.getItem("auditweb_local_history");
+          const historyList = historyRaw ? JSON.parse(historyRaw) : [];
+          const summary = {
+            id: data.result.id,
+            url: data.result.url,
+            timestamp: data.result.timestamp,
+            device: data.result.device,
+            overallScore: data.result.overallScore,
+            totalIssues: data.result.findings?.length || 0,
+            categories: {
+              accessibility: data.result.categories?.accessibility?.score ?? 100,
+              ux: data.result.categories?.ux?.score ?? 100,
+              visual: data.result.categories?.visual?.score ?? 100,
+              typography: data.result.categories?.typography?.score ?? 100,
+              colors: data.result.categories?.colors?.score ?? 100,
+              seo: data.result.categories?.seo?.score ?? 100,
+            },
+          };
+          const updatedHistory = [summary, ...historyList.filter((h: any) => h.id !== data.result.id)].slice(0, 30);
+          localStorage.setItem("auditweb_local_history", JSON.stringify(updatedHistory));
+        }
+      } catch (e) {
+        console.warn("Could not cache audit in browser storage:", e);
+      }
+
+      router.push(`/audit/${data.result.id}?url=${encodeURIComponent(targetUrl)}`);
     } catch (err: unknown) {
       clearTimeout(timer1);
       clearTimeout(timer2);

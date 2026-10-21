@@ -17,12 +17,31 @@ export function HistoryDrawer({ isOpen, onClose, onSelectAudit }: HistoryDrawerP
   useEffect(() => {
     if (isOpen) {
       setLoading(true);
+
+      let localList: AuditSummary[] = [];
+      try {
+        if (typeof window !== 'undefined') {
+          const raw = localStorage.getItem('auditweb_local_history');
+          if (raw) localList = JSON.parse(raw);
+        }
+      } catch (e) {
+        console.warn('Failed to parse local history:', e);
+      }
+
       fetch('/api/history')
         .then((res) => res.json())
         .then((data) => {
-          if (data.history) setHistory(data.history);
+          const serverList: AuditSummary[] = data.history || [];
+          const map = new Map<string, AuditSummary>();
+          for (const item of localList) map.set(item.id, item);
+          for (const item of serverList) {
+            if (!map.has(item.id)) map.set(item.id, item);
+          }
+          setHistory(Array.from(map.values()));
         })
-        .catch(console.error)
+        .catch(() => {
+          if (localList.length > 0) setHistory(localList);
+        })
         .finally(() => setLoading(false));
     }
   }, [isOpen]);

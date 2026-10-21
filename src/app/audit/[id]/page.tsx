@@ -56,12 +56,46 @@ export default function AuditReportPage() {
       setIsLoading(true);
       setError(null);
       setLoadingStep('Retrieving inspection archive...');
-      const res = await fetch(`/api/audit/${id}`);
+
+      // 1. Fast check in browser storage (resilient across serverless container restarts)
+      if (typeof window !== 'undefined') {
+        const cachedRaw = sessionStorage.getItem(`auditweb_audit_${id}`) || localStorage.getItem(`auditweb_audit_${id}`);
+        if (cachedRaw) {
+          try {
+            const parsed = JSON.parse(cachedRaw);
+            if (parsed && parsed.id === id) {
+              setCurrentResult(parsed);
+              setDevice(parsed.device);
+              setSelectedFindingId(null);
+              setIsLoading(false);
+              setLoadingStep('');
+              return;
+            }
+          } catch (e) {
+            console.warn('Failed to parse cached audit:', e);
+          }
+        }
+      }
+
+      // 2. Query server API, passing url query parameter if available
+      const urlParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('url') : null;
+      const apiEndpoint = urlParam
+        ? `/api/audit/${id}?url=${encodeURIComponent(urlParam)}`
+        : `/api/audit/${id}`;
+
+      const res = await fetch(apiEndpoint);
       const data = await res.json();
       if (data.result) {
         setCurrentResult(data.result);
         setDevice(data.result.device);
         setSelectedFindingId(null);
+
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem(`auditweb_audit_${id}`, JSON.stringify(data.result));
+            localStorage.setItem(`auditweb_audit_${id}`, JSON.stringify(data.result));
+          } catch {}
+        }
       } else {
         throw new Error(data.error || 'Audit not found');
       }
@@ -75,20 +109,19 @@ export default function AuditReportPage() {
   };
 
   const handleRunAudit = async (overrideUrl?: string, overrideDevice?: 'desktop' | 'mobile') => {
-    if (!currentResult) return;
-    const targetUrl = (overrideUrl || currentResult.url).trim();
+    const targetUrl = (overrideUrl || currentResult?.url || '').trim();
     if (!targetUrl) return;
 
     const targetDevice = overrideDevice || device;
 
     setIsLoading(true);
     setError(null);
-    setLoadingStep('Launching headless Chromium engine...');
+    setLoadingStep('Launching inspection engine...');
 
     try {
-      const timer1 = setTimeout(() => setLoadingStep('Enforcing SSRF boundaries & resolving DNS...'), 1800);
-      const timer2 = setTimeout(() => setLoadingStep('Executing axe-core WCAG 2.1 AA evaluation...'), 5000);
-      const timer3 = setTimeout(() => setLoadingStep('Analyzing DOM geometry, typography & chromatic balance...'), 9000);
+      const timer1 = setTimeout(() => setLoadingStep('Enforcing SSRF boundaries & resolving DNS...'), 1400);
+      const timer2 = setTimeout(() => setLoadingStep('Executing WCAG 2.1 AA & UX inspection rules...'), 3500);
+      const timer3 = setTimeout(() => setLoadingStep('Analyzing DOM geometry, typography & chromatic balance...'), 6000);
 
       const res = await fetch('/api/audit', {
         method: 'POST',
@@ -110,7 +143,14 @@ export default function AuditReportPage() {
         throw new Error(data.error || 'Failed to complete audit');
       }
 
-      router.push(`/audit/${data.result.id}`);
+      try {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(`auditweb_audit_${data.result.id}`, JSON.stringify(data.result));
+          localStorage.setItem(`auditweb_audit_${data.result.id}`, JSON.stringify(data.result));
+        }
+      } catch {}
+
+      router.push(`/audit/${data.result.id}?url=${encodeURIComponent(targetUrl)}`);
       setCurrentResult(data.result);
       setDevice(data.result.device);
       setSelectedFindingId(null);
@@ -175,16 +215,49 @@ export default function AuditReportPage() {
         {error && !isLoading && (
           <div className="p-6 border border-[var(--c-signal)] bg-[var(--c-bg-alt)] text-[var(--c-signal)] flex items-start gap-4 text-xs mono">
             <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-            <div className="space-y-2">
-              <div className="font-bold uppercase tracking-wider">Execution Error</div>
-              <div className="text-[var(--c-ink-2)]">{error}</div>
-              <button
-                type="button"
-                onClick={() => router.push('/')}
-                className="btn btn-quiet btn-sm mt-3"
-              >
-                Return to home index
-              </button>
+            <div className="space-y-3 flex-1">
+              <div className="font-bold uppercase tracking-wider">Execution Notice</div>
+              <div className="text-[var(--c-ink-2)]">
+                {error.includes('not found')
+                  ? 'This inspection archive is not found in your session cache. Enter a website address to run a fresh inspection:'
+                  : error}
+              </div>
+
+              <div className="flex items-center gap-2 max-w-md pt-1">
+                <input
+                  type="text"
+                  placeholder="https://example.com"
+                  defaultValue={typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('url') || '' : ''}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const val = (e.currentTarget.value || '').trim();
+                      if (val) handleRunAudit(val);
+                    }
+                  }}
+                  id="reinspect-input"
+                  className="input input-sm flex-1 bg-[var(--c-surface)] text-[var(--c-ink)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('reinspect-input') as HTMLInputElement | null;
+                    if (el && el.value.trim()) handleRunAudit(el.value.trim());
+                  }}
+                  className="btn btn-primary btn-sm whitespace-nowrap"
+                >
+                  Run Inspection
+                </button>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => router.push('/')}
+                  className="btn btn-quiet btn-sm"
+                >
+                  Return to home index
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -20,16 +20,66 @@ export interface AuditOptions {
   forceRerun?: boolean;
 }
 
+async function launchBrowser(): Promise<Browser> {
+  // 1. If remote WebSocket endpoint is configured (Browserless / Remote CDP)
+  if (process.env.BROWSER_WS_ENDPOINT) {
+    try {
+      const { chromium } = await import('playwright-core');
+      return await chromium.connect(process.env.BROWSER_WS_ENDPOINT);
+    } catch (wsErr) {
+      console.warn('[Auditor] Failed to connect to BROWSER_WS_ENDPOINT, falling back to local/serverless launch:', wsErr);
+    }
+  }
+
+  // 2. If running on Vercel / AWS Lambda
+  if (process.env.VERCEL) {
+    try {
+      const chromium = (await import('@sparticuz/chromium')).default;
+      const { chromium: playwright } = await import('playwright-core');
+
+      if ('graphicsMode' in chromium) {
+        (chromium as any).graphicsMode = false;
+      }
+
+      const executablePath = await chromium.executablePath();
+      return await playwright.launch({
+        args: [
+          ...chromium.args,
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--single-process',
+        ],
+        executablePath,
+        headless: true,
+      });
+    } catch (vercelErr) {
+      console.warn('[Auditor] Serverless Chromium launch failed on Vercel:', vercelErr);
+      throw vercelErr;
+    }
+  }
+
+  // 3. Local development / Windows / Linux (standard Playwright)
+  const { chromium } = await import('playwright');
+  return await chromium.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-first-run',
+      '--disable-extensions',
+    ],
+  });
+}
+
 export async function runAuditEngine(options: AuditOptions): Promise<AuditResult> {
   const startTime = Date.now();
   const device = options.device || 'desktop';
 
-  // 1. In Vercel serverless functions or headless-restricted environments, use the fast serverless engine
-  if (process.env.VERCEL || process.env.AUDIT_ENGINE === 'serverless') {
-    return runServerlessAuditEngine(options);
-  }
-
-  // 2. SSRF and URL validation
+  // 1. SSRF and URL validation
   const ssrfCheck = await validateAndCheckSSRF(options.url);
   if (!ssrfCheck.valid || !ssrfCheck.normalizedUrl) {
     throw new Error(ssrfCheck.error || 'Invalid or prohibited target URL');
@@ -50,17 +100,7 @@ export async function runAuditEngine(options: AuditOptions): Promise<AuditResult
 
   try {
     try {
-      browser = await chromium.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--no-first-run',
-          '--disable-extensions',
-        ],
-      });
+      browser = await launchBrowser();
     } catch (launchErr: unknown) {
       console.warn('[Auditor] Headless Chromium executable unavailable; engaging serverless inspection engine:', launchErr);
       return await runServerlessAuditEngine(options);

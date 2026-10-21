@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: __dirname,
-  serverExternalPackages: ["playwright", "axe-core"],
+  serverExternalPackages: ["playwright", "playwright-core", "@sparticuz/chromium", "axe-core"],
   transpilePackages: ["lucide-react"],
   poweredByHeader: false,
   compress: true,

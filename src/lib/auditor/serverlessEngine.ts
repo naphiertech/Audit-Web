@@ -199,84 +199,63 @@ function parsePageHtml(html: string): ParsedHtml {
   };
 }
 
-function generateSvgScreenshot(parsed: ParsedHtml, targetUrl: string, device: 'desktop' | 'mobile'): string {
+async function fetchRealScreenshot(targetUrl: string, device: 'desktop' | 'mobile'): Promise<string> {
+  const isMobile = device === 'mobile';
+
+  // 1. Try high-definition real screenshot via Microlink
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6500);
+    const viewportParam = isMobile
+      ? '&viewport.width=390&viewport.height=844&viewport.isMobile=true'
+      : '&viewport.width=1440&viewport.height=960';
+    const microlinkUrl = `https://api.microlink.io/?url=${encodeURIComponent(targetUrl)}&screenshot=true&embed=screenshot.url${viewportParam}`;
+    const res = await fetch(microlinkUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const buffer = await res.arrayBuffer();
+      if (buffer.byteLength > 2000) {
+        return `data:image/png;base64,${Buffer.from(buffer).toString('base64')}`;
+      }
+    }
+  } catch (e) {
+    console.warn('[Serverless Engine] Microlink screenshot failed, trying mShots:', e);
+  }
+
+  // 2. Try WordPress mShots fallback
+  try {
+    const widthParam = isMobile ? '390' : '1440';
+    const mshotsUrl = `https://s.wordpress.com/mshots/v1/${encodeURIComponent(targetUrl)}?w=${widthParam}`;
+    const res = await fetch(mshotsUrl);
+    if (res.ok) {
+      const buffer = await res.arrayBuffer();
+      if (buffer.byteLength > 2000) {
+        return `data:image/jpeg;base64,${Buffer.from(buffer).toString('base64')}`;
+      }
+    }
+  } catch (e) {
+    console.warn('[Serverless Engine] mShots screenshot failed:', e);
+  }
+
+  // 3. Fallback: Clean subtle browser preview frame with real hostname
+  return generateAestheticFrame(targetUrl, device);
+}
+
+function generateAestheticFrame(targetUrl: string, device: 'desktop' | 'mobile'): string {
   const isMobile = device === 'mobile';
   const width = isMobile ? 390 : 1440;
   const height = isMobile ? 844 : 960;
   const hostname = new URL(targetUrl).hostname;
-  const primaryH1 = parsed.h1s[0] || parsed.title || hostname;
-  const cleanDesc = (parsed.metaDescription || parsed.ogDescription || 'Website inspection preview').slice(0, 140);
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="#fdfcfb">
-  <!-- Surface Background -->
-  <rect width="${width}" height="${height}" fill="#fcfbf9"/>
-  
-  <!-- Navigation Topbar -->
-  <rect x="0" y="0" width="${width}" height="64" fill="#ffffff" stroke="#e8e7e1" stroke-width="1"/>
-  <circle cx="${isMobile ? 32 : 48}" cy="32" r="14" fill="#18181b"/>
-  <text x="${isMobile ? 56 : 76}" y="37" font-family="system-ui, sans-serif" font-size="14" font-weight="600" fill="#18181b">${hostname}</text>
-  
-  <!-- Navigation Actions -->
-  ${isMobile ? `
-  <rect x="330" y="22" width="36" height="20" rx="3" fill="#e4e4e7"/>
-  ` : `
-  <rect x="1080" y="20" width="80" height="24" rx="4" fill="#f4f4f5"/>
-  <rect x="1180" y="20" width="80" height="24" rx="4" fill="#f4f4f5"/>
-  <rect x="1280" y="16" width="110" height="32" rx="4" fill="#2563eb"/>
-  <text x="1335" y="37" font-family="system-ui, sans-serif" font-size="12" font-weight="500" fill="#ffffff" text-anchor="middle">Action</text>
-  `}
-
-  <!-- Hero Content Area -->
-  <g transform="translate(${isMobile ? 24 : 120}, ${isMobile ? 100 : 140})">
-    <!-- Domain Tag -->
-    <rect x="0" y="0" width="${isMobile ? 130 : 160}" height="24" rx="4" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
-    <text x="12" y="16" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#2563eb">LIVE INSPECTION</text>
-
-    <!-- Main Heading -->
-    <text x="0" y="${isMobile ? 60 : 72}" font-family="system-ui, sans-serif" font-size="${isMobile ? 26 : 42}" font-weight="700" fill="#09090b">
-      ${primaryH1.slice(0, isMobile ? 24 : 48)}
-    </text>
-
-    <!-- Subtitle / Meta Description -->
-    <text x="0" y="${isMobile ? 105 : 124}" font-family="system-ui, sans-serif" font-size="${isMobile ? 13 : 16}" fill="#71717a">
-      ${cleanDesc.slice(0, isMobile ? 42 : 80)}
-    </text>
-    ${cleanDesc.length > (isMobile ? 42 : 80) ? `
-    <text x="0" y="${isMobile ? 128 : 150}" font-family="system-ui, sans-serif" font-size="${isMobile ? 13 : 16}" fill="#71717a">
-      ${cleanDesc.slice(isMobile ? 42 : 80, isMobile ? 84 : 160)}
-    </text>
-    ` : ''}
-
-    <!-- Primary CTA Button -->
-    <rect x="0" y="${isMobile ? 160 : 190}" width="${isMobile ? 140 : 180}" height="${isMobile ? 40 : 48}" rx="6" fill="#18181b"/>
-    <text x="${isMobile ? 70 : 90}" y="${isMobile ? 185 : 220}" font-family="system-ui, sans-serif" font-size="14" font-weight="600" fill="#ffffff" text-anchor="middle">Explore</text>
-  </g>
-
-  <!-- Content Section Grid -->
-  <g transform="translate(${isMobile ? 24 : 120}, ${isMobile ? 360 : 440})">
-    <rect x="0" y="0" width="${isMobile ? 342 : 380}" height="${isMobile ? 130 : 220}" rx="8" fill="#ffffff" stroke="#e4e4e7" stroke-width="1"/>
-    <rect x="16" y="20" width="${isMobile ? 160 : 200}" height="18" rx="3" fill="#27272a"/>
-    <rect x="16" y="52" width="${isMobile ? 280 : 320}" height="12" rx="2" fill="#a1a1aa"/>
-    <rect x="16" y="74" width="${isMobile ? 220 : 260}" height="12" rx="2" fill="#d4d4d8"/>
-
-    ${!isMobile ? `
-    <rect x="410" y="0" width="380" height="220" rx="8" fill="#ffffff" stroke="#e4e4e7" stroke-width="1"/>
-    <rect x="426" y="20" width="200" height="18" rx="3" fill="#27272a"/>
-    <rect x="426" y="52" width="320" height="12" rx="2" fill="#a1a1aa"/>
-    <rect x="426" y="74" width="260" height="12" rx="2" fill="#d4d4d8"/>
-
-    <rect x="820" y="0" width="380" height="220" rx="8" fill="#ffffff" stroke="#e4e4e7" stroke-width="1"/>
-    <rect x="836" y="20" width="200" height="18" rx="3" fill="#27272a"/>
-    <rect x="836" y="52" width="320" height="12" rx="2" fill="#a1a1aa"/>
-    <rect x="836" y="74" width="260" height="12" rx="2" fill="#d4d4d8"/>
-    ` : ''}
-  </g>
-
-  <!-- Footer Indicator -->
-  <rect x="0" y="${height - 56}" width="${width}" height="56" fill="#f4f4f5" stroke="#e4e4e7" stroke-width="1"/>
-  <text x="${isMobile ? 24 : 120}" y="${height - 24}" font-family="system-ui, sans-serif" font-size="12" fill="#71717a">© ${hostname} · Audited by AUDIT/WEB</text>
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="#fcfbf9">
+  <rect width="${width}" height="${height}" fill="#fbfaf8"/>
+  <rect x="0" y="0" width="${width}" height="56" fill="#ffffff" stroke="#e8e7e1" stroke-width="1"/>
+  <circle cx="32" cy="28" r="8" fill="#18181b"/>
+  <rect x="52" y="16" width="${isMobile ? 220 : 480}" height="24" rx="4" fill="#f4f4f5" stroke="#e4e4e7" stroke-width="1"/>
+  <text x="64" y="32" font-family="monospace" font-size="11" fill="#71717a">https://${hostname}</text>
+  <text x="${width / 2}" y="${height / 2}" font-family="system-ui, sans-serif" font-size="16" font-weight="600" fill="#27272a" text-anchor="middle">${hostname}</text>
+  <text x="${width / 2}" y="${height / 2 + 28}" font-family="system-ui, sans-serif" font-size="13" fill="#a1a1aa" text-anchor="middle">Live inspection session</text>
 </svg>`;
-
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
@@ -628,7 +607,7 @@ export async function runServerlessAuditEngine(options: ServerlessAuditOptions):
     totalChecksPassed,
   } = calculateScores(deduplicated);
 
-  const screenshot = generateSvgScreenshot(parsed, targetUrl, device);
+  const screenshot = await fetchRealScreenshot(targetUrl, device);
   const auditId = `audit_${crypto.randomUUID().slice(0, 12)}`;
   const executionTimeMs = Date.now() - startTime;
 

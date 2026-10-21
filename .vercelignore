@@ -1,0 +1,20 @@
+# Dev scripts and test harnesses
+scripts/
+tests/
+__tests__/
+
+# Local SQLite databases and captured data
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Local test outputs and reports
+coverage/
+playwright-report/
+test-results/
+
+# Documentation and design scratch
+.taste-skill/
+shots/
+*.log

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "functions": {
+    "src/app/api/audit/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    },
+    "src/app/api/audit/[id]/route.ts": {
+      "memory": 256,
+      "maxDuration": 10
+    },
+    "src/app/api/audit/[id]/export/route.ts": {
+      "memory": 256,
+      "maxDuration": 10
+    },
+    "src/app/api/history/route.ts": {
+      "memory": 256,
+      "maxDuration": 10
+    }
+  }
+}

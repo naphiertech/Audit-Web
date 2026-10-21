@@ -9,6 +9,7 @@ import { runColorsAudit } from './rules/colors';
 import { runSeoAudit } from './rules/seo';
 import { deduplicateFindings, calculateScores } from './scoring';
 import { saveAudit } from '@/lib/db';
+import { runServerlessAuditEngine } from './serverlessEngine';
 import crypto from 'node:crypto';
 import { URL } from 'node:url';
 import dns from 'node:dns/promises';
@@ -23,7 +24,12 @@ export async function runAuditEngine(options: AuditOptions): Promise<AuditResult
   const startTime = Date.now();
   const device = options.device || 'desktop';
 
-  // 1. SSRF and URL validation
+  // 1. In Vercel serverless functions or headless-restricted environments, use the fast serverless engine
+  if (process.env.VERCEL || process.env.AUDIT_ENGINE === 'serverless') {
+    return runServerlessAuditEngine(options);
+  }
+
+  // 2. SSRF and URL validation
   const ssrfCheck = await validateAndCheckSSRF(options.url);
   if (!ssrfCheck.valid || !ssrfCheck.normalizedUrl) {
     throw new Error(ssrfCheck.error || 'Invalid or prohibited target URL');
@@ -43,17 +49,22 @@ export async function runAuditEngine(options: AuditOptions): Promise<AuditResult
   let context: BrowserContext | null = null;
 
   try {
-    browser = await chromium.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-first-run',
-        '--disable-extensions',
-      ],
-    });
+    try {
+      browser = await chromium.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--no-first-run',
+          '--disable-extensions',
+        ],
+      });
+    } catch (launchErr: unknown) {
+      console.warn('[Auditor] Headless Chromium executable unavailable; engaging serverless inspection engine:', launchErr);
+      return await runServerlessAuditEngine(options);
+    }
 
     context = await browser.newContext({
       viewport,

@@ -33,6 +33,8 @@ export async function GET() {
 
   return NextResponse.json({
     status: 'ok',
+    version: '1.1.0-cdp-fix',
+    commitSha: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
     environment: {
       isVercel: Boolean(process.env.VERCEL),
       hasBrowserlessKey,

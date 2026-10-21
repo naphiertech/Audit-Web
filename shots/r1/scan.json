@@ -1,0 +1,231 @@
+[
+  {
+    "w": 390,
+    "fails": [
+      "4 type families in real use (Inter, JetBrains Mono, Space Grotesk, ui-monospace). Two is a system, four is a ransom note.",
+      "Text under 11px: 10px \"CRITICAL #01\"; 10px \"US/EN [28×22px]\"; 10px \"<img src=\"hero-bench.webp\">\"; 10px \"580×390px · Missing width/heig\"",
+      "Contrast below WCAG AA: 2.78:1 11px \"Published under open specifica\"; 3.80:1 10px \"1440×900 DOM\"; 3.67:1 12px \"1\"; 4.50:1 12px \"4\"; 3.22:1 12px \"5\" (7 elements in all)",
+      "Text clipped: \"Every interface\" cut by its container; \"leaves evidence.\" cut by its container; \"Our architecture processes dis\" cut by its container; \"<img src=\"hero-bench.webp\">\" cut by its container",
+      "Text overlapping text: \"Our architecture processes dis\" / \"5\"",
+      "5 saturated hue families (210°, 150°, 30°, 0°, 60°). One accent with one job, plus semantic colour where state needs it."
+    ],
+    "warns": [
+      "Default-reach font: Inter, JetBrains Mono, Space Grotesk. If DIRECTION.md does not say why this face and not another, it is the default talking.",
+      "13 distinct text sizes. A scale has 6 to 9 steps: 66.3, 60, 44, 32, 30, 24, 20, 18, 16, 14, 12, 11, 10",
+      "17 text elements at 11px: 11px \"820×412px · Accessibility\"; 11px \"<input type=\"email\" name=\"subs\"; 11px \"Docs\"",
+      "Running text under 15px: 11px \"Our architecture processes dis\"; 14px \"Screen readers cannot announce\"; 12px \"Bind a visible <label for=\"sub\"",
+      "5 em dashes in visible copy. A period or colon usually reads cleaner.",
+      "26 stock outline icons at the default 2px stroke (Lucide/Feather/Heroicons). Match the stroke to the type weight, or use fewer.",
+      "Three features of \"The shadcn Dashboard\" (Inter or Geist, stock outline icons, a hue for every status)."
+    ],
+    "facts": {
+      "fonts": {
+        "Inter": "65%",
+        "JetBrains Mono": "14%",
+        "Space Grotesk": "11%",
+        "ui-monospace": "10%"
+      },
+      "sizes": [
+        66.3,
+        60,
+        44,
+        32,
+        30,
+        24,
+        20,
+        18,
+        16,
+        14,
+        12,
+        11,
+        10
+      ],
+      "body": 13.7,
+      "hues": [
+        210,
+        150,
+        30,
+        0,
+        60
+      ],
+      "boxes": 46,
+      "cardGrids": 0,
+      "defaultIcons": 26
+    }
+  },
+  {
+    "w": 768,
+    "fails": [
+      "4 type families in real use (Inter, JetBrains Mono, Space Grotesk, ui-monospace). Two is a system, four is a ransom note.",
+      "Text under 11px: 10px \"CRITICAL #01\"; 10px \"US/EN [28×22px]\"; 10px \"<img src=\"hero-bench.webp\">\"; 10px \"580×390px · Missing width/heig\"",
+      "Contrast below WCAG AA: 2.78:1 11px \"Published under open specifica\"; 3.80:1 10px \"1440×900 DOM\"; 3.67:1 12px \"1\"; 4.50:1 12px \"4\"; 3.22:1 12px \"5\" (7 elements in all)",
+      "Text clipped: \"Every interface\" cut by its container; \"leaves evidence.\" cut by its container; \"AUDIT/WEB\" cut by its container",
+      "Text overlapping text: \"SPECIMEN // TARGET DOM\" / \"6\"",
+      "5 saturated hue families (210°, 150°, 30°, 0°, 60°). One accent with one job, plus semantic colour where state needs it."
+    ],
+    "warns": [
+      "Default-reach font: Inter, JetBrains Mono, Space Grotesk. If DIRECTION.md does not say why this face and not another, it is the default talking.",
+      "15 distinct text sizes. A scale has 6 to 9 steps: 130.56, 72, 48, 46.08, 36, 32.256, 30, 24, 20, 18, 16, 14, 12, 11, 10",
+      "16 text elements at 11px: 11px \"820×412px · Accessibility\"; 11px \"<input type=\"email\" name=\"subs\"; 11px \"Docs\"",
+      "Running text under 15px: 12px \"Our architecture processes dis\"; 14px \"Screen readers cannot announce\"; 12px \"Bind a visible <label for=\"sub\"",
+      "Lines too long to read comfortably (aim for 45 to 75): ~103 chars/line \"Playwright launches an i\"",
+      "5 em dashes in visible copy. A period or colon usually reads cleaner.",
+      "26 stock outline icons at the default 2px stroke (Lucide/Feather/Heroicons). Match the stroke to the type weight, or use fewer.",
+      "Three features of \"The shadcn Dashboard\" (Inter or Geist, stock outline icons, a hue for every status)."
+    ],
+    "facts": {
+      "fonts": {
+        "Inter": "65%",
+        "JetBrains Mono": "15%",
+        "Space Grotesk": "11%",
+        "ui-monospace": "10%"
+      },
+      "sizes": [
+        130.56,
+        72,
+        48,
+        46.08,
+        36,
+        32.256,
+        30,
+        24,
+        20,
+        18,
+        16,
+        14,
+        12,
+        11,
+        10
+      ],
+      "body": 14.6,
+      "hues": [
+        210,
+        150,
+        30,
+        0,
+        60
+      ],
+      "boxes": 40,
+      "cardGrids": 0,
+      "defaultIcons": 26
+    }
+  },
+  {
+    "w": 1280,
+    "fails": [
+      "Page scrolls sideways at 1280px (content 1951px wide). Sticking out: <span.text-xs.font-semibold> 106px wide, right edge at 1534 \"Spatial Calibration\"; <h3.font-display.font-bold> 334px wide, right edge at 1534 \"Review findings on the 1\"; <p.text-xs.text-[var(--text-muted)]> 334px wide, right edge at 1534 \"Every defect with a phys\". Often 100vw, a fixed width, or an unwrapped long word.",
+      "4 type families in real use (Inter, JetBrains Mono, Space Grotesk, ui-monospace). Two is a system, four is a ransom note.",
+      "Text under 11px: 10px \"CRITICAL #01\"; 10px \"US/EN [28×22px]\"; 10px \"<img src=\"hero-bench.webp\">\"; 10px \"580×390px · Missing width/heig\"",
+      "Contrast below WCAG AA: 2.78:1 11px \"Published under open specifica\"; 3.80:1 10px \"1440×900 DOM\"; 3.67:1 12px \"1\"; 4.50:1 12px \"4\"; 3.22:1 12px \"5\" (7 elements in all)",
+      "Text clipped: \"Every interface\" cut by its container; \"leaves evidence.\" cut by its container; \"AUDIT/WEB\" cut by its container",
+      "Text overlapping text: \"SPECIMEN // TARGET DOM\" / \"6\"",
+      "Text running off the viewport: \"Review findings on the 1:1 pin\"; \"Every defect with a physical D\"; \"1:1 Coordinate Mapping · SQLit\"",
+      "5 saturated hue families (210°, 150°, 30°, 0°, 60°). One accent with one job, plus semantic colour where state needs it."
+    ],
+    "warns": [
+      "Default-reach font: Inter, JetBrains Mono, Space Grotesk. If DIRECTION.md does not say why this face and not another, it is the default talking.",
+      "15 distinct text sizes. A scale has 6 to 9 steps: 217.6, 76.8, 72, 53.76, 48, 36, 30, 24, 20, 18, 16, 14, 12, 11, 10",
+      "16 text elements at 11px: 11px \"820×412px · Accessibility\"; 11px \"<input type=\"email\" name=\"subs\"; 11px \"Docs\"",
+      "Running text under 15px: 12px \"Our architecture processes dis\"; 14px \"Screen readers cannot announce\"; 12px \"Bind a visible <label for=\"sub\"",
+      "5 em dashes in visible copy. A period or colon usually reads cleaner.",
+      "26 stock outline icons at the default 2px stroke (Lucide/Feather/Heroicons). Match the stroke to the type weight, or use fewer.",
+      "Three features of \"The shadcn Dashboard\" (Inter or Geist, stock outline icons, a hue for every status)."
+    ],
+    "facts": {
+      "fonts": {
+        "Inter": "65%",
+        "JetBrains Mono": "14%",
+        "Space Grotesk": "11%",
+        "ui-monospace": "10%"
+      },
+      "sizes": [
+        217.6,
+        76.8,
+        72,
+        53.76,
+        48,
+        36,
+        30,
+        24,
+        20,
+        18,
+        16,
+        14,
+        12,
+        11,
+        10
+      ],
+      "body": 14.6,
+      "hues": [
+        210,
+        150,
+        30,
+        0,
+        60
+      ],
+      "boxes": 38,
+      "cardGrids": 0,
+      "defaultIcons": 26
+    }
+  },
+  {
+    "w": 1440,
+    "fails": [
+      "Page scrolls sideways at 1440px (content 1951px wide). Sticking out: <span.text-xs.font-semibold> 106px wide, right edge at 1534 \"Spatial Calibration\"; <h3.font-display.font-bold> 334px wide, right edge at 1534 \"Review findings on the 1\"; <p.text-xs.text-[var(--text-muted)]> 334px wide, right edge at 1534 \"Every defect with a phys\". Often 100vw, a fixed width, or an unwrapped long word.",
+      "4 type families in real use (Inter, JetBrains Mono, Space Grotesk, ui-monospace). Two is a system, four is a ransom note.",
+      "Text under 11px: 10px \"CRITICAL #01\"; 10px \"US/EN [28×22px]\"; 10px \"<img src=\"hero-bench.webp\">\"; 10px \"580×390px · Missing width/heig\"",
+      "Contrast below WCAG AA: 2.78:1 11px \"Published under open specifica\"; 3.80:1 10px \"1440×900 DOM\"; 3.67:1 12px \"1\"; 4.50:1 12px \"4\"; 3.22:1 12px \"5\" (7 elements in all)",
+      "Text clipped: \"Every interface\" cut by its container; \"leaves evidence.\" cut by its container; \"AUDIT/WEB\" cut by its container",
+      "Text overlapping text: \"SPECIMEN // TARGET DOM\" / \"6\"; \"Distributed Optical Telemetry\" / \"4\"",
+      "Text running off the viewport: \"Spatial Calibration\"; \"Review findings on the 1:1 pin\"; \"Every defect with a physical D\"",
+      "5 saturated hue families (210°, 150°, 30°, 0°, 60°). One accent with one job, plus semantic colour where state needs it."
+    ],
+    "warns": [
+      "Default-reach font: Inter, JetBrains Mono, Space Grotesk. If DIRECTION.md does not say why this face and not another, it is the default talking.",
+      "15 distinct text sizes. A scale has 6 to 9 steps: 244.8, 86.4, 72, 60, 48, 36, 30, 24, 20, 18, 16, 14, 12, 11, 10",
+      "16 text elements at 11px: 11px \"820×412px · Accessibility\"; 11px \"<input type=\"email\" name=\"subs\"; 11px \"Docs\"",
+      "Running text under 15px: 12px \"Our architecture processes dis\"; 14px \"Screen readers cannot announce\"; 12px \"Bind a visible <label for=\"sub\"",
+      "5 em dashes in visible copy. A period or colon usually reads cleaner.",
+      "26 stock outline icons at the default 2px stroke (Lucide/Feather/Heroicons). Match the stroke to the type weight, or use fewer.",
+      "Three features of \"The shadcn Dashboard\" (Inter or Geist, stock outline icons, a hue for every status).",
+      "The keyboard walk reached no stop at all, though the page has links and buttons. Is the page trapping focus, or are its controls not focusable?"
+    ],
+    "facts": {
+      "fonts": {
+        "Inter": "65%",
+        "JetBrains Mono": "14%",
+        "Space Grotesk": "11%",
+        "ui-monospace": "10%"
+      },
+      "sizes": [
+        244.8,
+        86.4,
+        72,
+        60,
+        48,
+        36,
+        30,
+        24,
+        20,
+        18,
+        16,
+        14,
+        12,
+        11,
+        10
+      ],
+      "body": 14.6,
+      "hues": [
+        210,
+        150,
+        30,
+        0,
+        60
+      ],
+      "boxes": 37,
+      "cardGrids": 0,
+      "defaultIcons": 26,
+      "focusStops": 0
+    }
+  }
+]

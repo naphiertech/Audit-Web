@@ -1,0 +1,56 @@
+[
+  {
+    "w": 390,
+    "fails": [
+      "Page scrolls sideways at 397px (content 397px wide). Sticking out: <p> 98px wide, right edge at 397 \"Export ready-to-run reme\". Often 100vw, a fixed width, or an unwrapped long word.",
+      "Text running off the viewport: \"Export ready-to-run remediatio\""
+    ],
+    "warns": [
+      "Default-reach font: Inter. If DIRECTION.md does not say why this face and not another, it is the default talking.",
+      "No action in the first 397×860 screen (outside the nav). The one action should be visible without scrolling."
+    ],
+    "facts": {
+      "fonts": {
+        "Inter": "92%",
+        "Newsreader": "8%"
+      },
+      "sizes": [
+        56,
+        16
+      ],
+      "body": 16,
+      "hues": [
+        150
+      ],
+      "boxes": 1,
+      "cardGrids": 0,
+      "defaultIcons": 0
+    }
+  },
+  {
+    "w": 1440,
+    "fails": [],
+    "warns": [
+      "Default-reach font: Inter. If DIRECTION.md does not say why this face and not another, it is the default talking.",
+      "No action in the first 1440×900 screen (outside the nav). The one action should be visible without scrolling."
+    ],
+    "facts": {
+      "fonts": {
+        "Inter": "92%",
+        "Newsreader": "8%"
+      },
+      "sizes": [
+        115.2,
+        16
+      ],
+      "body": 16,
+      "hues": [
+        150
+      ],
+      "boxes": 1,
+      "cardGrids": 0,
+      "defaultIcons": 0,
+      "focusStops": 1
+    }
+  }
+]

@@ -1,0 +1,213 @@
+import { chromium, Browser, BrowserContext } from 'playwright';
+import { AuditFinding, AuditResult } from '@/types/audit';
+import { validateAndCheckSSRF, isPrivateOrReservedIP } from '@/lib/security';
+import { runAccessibilityAudit } from './rules/accessibility';
+import { runUxAudit } from './rules/ux';
+import { runVisualAudit } from './rules/visual';
+import { runTypographyAudit } from './rules/typography';
+import { runColorsAudit } from './rules/colors';
+import { runSeoAudit } from './rules/seo';
+import { deduplicateFindings, calculateScores } from './scoring';
+import { saveAudit } from '@/lib/db';
+import crypto from 'node:crypto';
+import { URL } from 'node:url';
+import dns from 'node:dns/promises';
+
+export interface AuditOptions {
+  url: string;
+  device?: 'desktop' | 'mobile';
+  forceRerun?: boolean;
+}
+
+export async function runAuditEngine(options: AuditOptions): Promise<AuditResult> {
+  const startTime = Date.now();
+  const device = options.device || 'desktop';
+
+  // 1. SSRF and URL validation
+  const ssrfCheck = await validateAndCheckSSRF(options.url);
+  if (!ssrfCheck.valid || !ssrfCheck.normalizedUrl) {
+    throw new Error(ssrfCheck.error || 'Invalid or prohibited target URL');
+  }
+
+  const targetUrl = ssrfCheck.normalizedUrl;
+
+  const viewport = device === 'mobile'
+    ? { width: 390, height: 844 }
+    : { width: 1440, height: 900 };
+
+  const userAgent = device === 'mobile'
+    ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1'
+    : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+  let browser: Browser | null = null;
+  let context: BrowserContext | null = null;
+
+  try {
+    browser = await chromium.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-first-run',
+        '--disable-extensions',
+      ],
+    });
+
+    context = await browser.newContext({
+      viewport,
+      userAgent,
+      deviceScaleFactor: 1,
+      isMobile: device === 'mobile',
+      hasTouch: device === 'mobile',
+      ignoreHTTPSErrors: true,
+    });
+
+    // Provide __name polyfill in page context to safeguard against esbuild / bundler name instrumentation
+    await context.addInitScript(() => {
+      // @ts-expect-error polyfill
+      window.__name = (target: any) => target;
+    });
+
+    const page = await context.newPage();
+
+    // Re-verify destination on all network requests and redirects for SSRF
+    await page.route('**/*', async (route) => {
+      const requestUrl = route.request().url();
+      try {
+        const u = new URL(requestUrl);
+        if (u.protocol === 'data:' || u.protocol === 'blob:') {
+          await route.continue();
+          return;
+        }
+
+        const host = u.hostname.toLowerCase();
+        if (
+          host === 'localhost' ||
+          host.endsWith('.localhost') ||
+          host.endsWith('.local') ||
+          host === '127.0.0.1' ||
+          host === '::1' ||
+          host === '169.254.169.254'
+        ) {
+          await route.abort('blockedbyclient');
+          return;
+        }
+
+        // Fast IP check if host is IP
+        if (/^\d+\.\d+\.\d+\.\d+$/.test(host) && isPrivateOrReservedIP(host)) {
+          await route.abort('blockedbyclient');
+          return;
+        }
+
+        await route.continue();
+      } catch {
+        await route.abort('blockedbyclient');
+      }
+    });
+
+    // Navigate with 25 second timeout
+    await page.goto(targetUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: 25000,
+    });
+
+    // Wait a brief period for fonts, client hydration, and layout settling
+    await page.waitForTimeout(2000);
+
+    // Extract meta information
+    const pageMeta = await page.evaluate(() => {
+      const title = document.title || '';
+      const metaDesc = document.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+      const h1 = document.querySelector('h1')?.textContent?.trim() || '';
+      const totalElements = document.querySelectorAll('*').length;
+      return { title, description: metaDesc, h1, totalElements };
+    });
+
+    // Extract document dimensions for accurate full-page pin calibration
+    const documentDimensions = await page.evaluate(() => {
+      const doc = document.documentElement;
+      const body = document.body;
+      const width = Math.max(doc.scrollWidth, body ? body.scrollWidth : 0, window.innerWidth);
+      const height = Math.max(doc.scrollHeight, body ? body.scrollHeight : 0, window.innerHeight);
+      return { width, height };
+    });
+
+    // Take full page screenshot
+    const screenshotBuffer = await page.screenshot({
+      fullPage: true,
+      type: 'png',
+    });
+    const screenshotBase64 = `data:image/png;base64,${screenshotBuffer.toString('base64')}`;
+
+    // Execute audit rules
+    const [a11yFindings, uxFindings, visualFindings, typoResult, colorsResult, seoFindings] = await Promise.all([
+      runAccessibilityAudit(page),
+      runUxAudit(page),
+      runVisualAudit(page),
+      runTypographyAudit(page),
+      runColorsAudit(page),
+      runSeoAudit(page),
+    ]);
+
+    const allFindings: AuditFinding[] = [
+      ...a11yFindings,
+      ...uxFindings,
+      ...visualFindings,
+      ...typoResult.findings,
+      ...colorsResult.findings,
+      ...seoFindings,
+    ];
+
+    // Deduplicate and renumber findings 1..N
+    const deduplicatedFindings = deduplicateFindings(allFindings);
+
+    // Calculate score deductions and category scores
+    const {
+      overallScore,
+      categories,
+      isVetoApplied,
+      vetoReason,
+      totalChecksEvaluated,
+      totalChecksPassed,
+    } = calculateScores(deduplicatedFindings);
+
+    const auditId = `audit_${crypto.randomUUID().slice(0, 12)}`;
+    const executionTimeMs = Date.now() - startTime;
+
+    const result: AuditResult = {
+      id: auditId,
+      url: targetUrl,
+      timestamp: new Date().toISOString(),
+      device,
+      viewport,
+      documentDimensions,
+      overallScore,
+      categories,
+      findings: deduplicatedFindings,
+      screenshot: screenshotBase64,
+      executionTimeMs,
+      isVetoApplied,
+      vetoReason,
+      totalChecksEvaluated,
+      totalChecksPassed,
+      meta: {
+        title: pageMeta.title || targetUrl,
+        description: pageMeta.description,
+        h1: pageMeta.h1,
+        totalElements: pageMeta.totalElements,
+        fontsDetected: typoResult.fontsDetected,
+        colorsDetected: colorsResult.colorsDetected,
+      },
+    };
+
+    // Save result to local SQLite database
+    saveAudit(result);
+
+    return result;
+  } finally {
+    if (context) await context.close().catch(() => {});
+    if (browser) await browser.close().catch(() => {});
+  }
+}

@@ -252,6 +252,7 @@ export function ScreenshotInspector({
             className="relative border border-[var(--c-line)] bg-[var(--c-surface)] transition-transform duration-100 origin-top shadow-md"
             style={{
               width: result.device === 'mobile' ? '390px' : '100%',
+              maxWidth: result.device === 'mobile' ? '390px' : `${origW}px`,
               transform: `scale(${zoomLevel})`,
               transformOrigin: 'top center',
             }}

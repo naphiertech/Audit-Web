@@ -138,6 +138,22 @@ export async function runAuditEngine(options: AuditOptions): Promise<AuditResult
 
     const page = await context.newPage();
 
+    // Enforce explicit viewport on page
+    await page.setViewportSize(viewport);
+
+    // Apply CDP Emulation override (forces remote headless browsers like Browserless to respect 1440px / 390px)
+    try {
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('Emulation.setDeviceMetricsOverride', {
+        width: viewport.width,
+        height: viewport.height,
+        deviceScaleFactor: 1,
+        mobile: device === 'mobile',
+      });
+    } catch {
+      // Graceful fallback if CDP session is unavailable
+    }
+
     // Re-verify destination on all network requests and redirects for SSRF
     await page.route('**/*', async (route) => {
       const requestUrl = route.request().url();
@@ -207,6 +223,19 @@ export async function runAuditEngine(options: AuditOptions): Promise<AuditResult
     });
     const screenshotBase64 = `data:image/png;base64,${screenshotBuffer.toString('base64')}`;
 
+    // Read actual PNG dimensions directly from image header to guarantee 100% calibration parity
+    let finalWidth = documentDimensions.width;
+    let finalHeight = documentDimensions.height;
+    if (screenshotBuffer.length >= 24) {
+      const pngW = screenshotBuffer.readUInt32BE(16);
+      const pngH = screenshotBuffer.readUInt32BE(20);
+      if (pngW > 0 && pngH > 0) {
+        finalWidth = pngW;
+        finalHeight = pngH;
+      }
+    }
+    const verifiedDimensions = { width: finalWidth, height: finalHeight };
+
     // Execute audit rules
     const [a11yFindings, uxFindings, visualFindings, typoResult, colorsResult, seoFindings] = await Promise.all([
       runAccessibilityAudit(page),
@@ -248,7 +277,7 @@ export async function runAuditEngine(options: AuditOptions): Promise<AuditResult
       timestamp: new Date().toISOString(),
       device,
       viewport,
-      documentDimensions,
+      documentDimensions: verifiedDimensions,
       overallScore,
       categories,
       findings: deduplicatedFindings,

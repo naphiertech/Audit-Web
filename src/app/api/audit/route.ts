@@ -5,6 +5,44 @@ import { getLatestAuditForUrl } from '@/lib/db';
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
+export async function GET() {
+  const hasBrowserlessKey = Boolean(process.env.BROWSERLESS_API_KEY);
+  const hasBrowserlessToken = Boolean(process.env.BROWSERLESS_TOKEN);
+  const hasWsEndpoint = Boolean(process.env.BROWSER_WS_ENDPOINT);
+
+  let browserlessTest = 'not_configured';
+  const apiKey =
+    process.env.BROWSERLESS_API_KEY ||
+    process.env.BROWSERLESS_TOKEN ||
+    process.env.BROWSERLESS_KEY ||
+    process.env.BROWSER_API_KEY;
+  const endpoint =
+    process.env.BROWSER_WS_ENDPOINT ||
+    (apiKey ? `wss://chrome.browserless.io?token=${apiKey}` : null);
+
+  if (endpoint) {
+    try {
+      const { chromium } = await import('playwright-core');
+      const b = await chromium.connectOverCDP(endpoint, { timeout: 8000 });
+      browserlessTest = 'connected_successfully';
+      await b.close();
+    } catch (e: any) {
+      browserlessTest = `connection_error: ${e.message}`;
+    }
+  }
+
+  return NextResponse.json({
+    status: 'ok',
+    environment: {
+      isVercel: Boolean(process.env.VERCEL),
+      hasBrowserlessKey,
+      hasBrowserlessToken,
+      hasWsEndpoint,
+      browserlessTest,
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

@@ -1,13 +1,19 @@
 import { Page } from 'playwright';
+import axe from 'axe-core';
 import fs from 'node:fs';
 import path from 'node:path';
 import { AuditFinding, Severity } from '@/types/audit';
 
 export async function runAccessibilityAudit(page: Page): Promise<AuditFinding[]> {
   try {
-    // Inject axe-core
-    const axePath = path.join(process.cwd(), 'node_modules', 'axe-core', 'axe.min.js');
-    const axeScript = fs.readFileSync(axePath, 'utf8');
+    // Inject axe-core directly from memory source (serverless & container safe)
+    let axeScript = axe.source;
+    if (!axeScript) {
+      try {
+        const axePath = path.join(process.cwd(), 'node_modules', 'axe-core', 'axe.min.js');
+        axeScript = fs.readFileSync(axePath, 'utf8');
+      } catch {}
+    }
     await page.evaluate(axeScript);
 
     // Run axe in page context

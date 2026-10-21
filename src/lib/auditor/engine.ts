@@ -22,19 +22,25 @@ export interface AuditOptions {
 
 async function launchBrowser(): Promise<Browser> {
   // 1. If remote WebSocket endpoint or Browserless API key is configured
+  const apiKey =
+    process.env.BROWSERLESS_API_KEY ||
+    process.env.BROWSERLESS_TOKEN ||
+    process.env.BROWSERLESS_KEY ||
+    process.env.BROWSER_API_KEY;
+
   const wsEndpoint =
     process.env.BROWSER_WS_ENDPOINT ||
-    (process.env.BROWSERLESS_API_KEY
-      ? `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`
-      : null);
+    (apiKey ? `wss://chrome.browserless.io?token=${apiKey}` : null);
 
   if (wsEndpoint) {
     try {
+      console.log('[Auditor] Connecting to remote browser CDP endpoint...');
       const { chromium } = await import('playwright-core');
-      // Connect over CDP to remote headless browser (Browserless / Remote Chrome)
-      return await chromium.connectOverCDP(wsEndpoint);
+      const browser = await chromium.connectOverCDP(wsEndpoint, { timeout: 20000 });
+      console.log('[Auditor] Successfully connected to remote browser CDP endpoint!');
+      return browser;
     } catch (wsErr) {
-      console.warn('[Auditor] Failed to connect to remote browser endpoint, falling back:', wsErr);
+      console.error('[Auditor] Failed to connect to remote browser endpoint:', wsErr);
     }
   }
 
